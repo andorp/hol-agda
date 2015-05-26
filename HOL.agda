@@ -11,7 +11,7 @@ open import Data.Nat hiding (_*_)
 open import Data.String hiding (_++_)
 open import Data.Product
 open import Data.Vec hiding (_++_; [_])
-  
+
 data type : Set where
   one : type
   prop : type
@@ -23,7 +23,7 @@ data variable : Set where
   var_name : String → variable
 
 data function : ℕ → Set where
-  fun_name : (n : ℕ) → String → function n
+  fun_name : {n : ℕ} → String → function n
 
 data term : Set where
   var : variable → term
@@ -43,112 +43,199 @@ data term : Set where
   exist : variable → type → term → term
 
 postulate
-  subst : term → List (variable × variable) → term
+  subst      : term → List (variable × term) → term
 
 type-context = List (variable × type)
 
 pattern _,_∶_ Γ x t = (x , t) ∷ Γ
 
-data _⊢_∶_ : type-context → term → type → Set where
+module Rules (T : List type) (F : ∀ {n} → function n → List type) where
 
-  identity : {Γ : type-context} {x : variable} {t : type} →
-             --TODO: Add C(type)
-             -----------------------
-             (Γ , x ∶ t) ⊢ var x ∶ t
+  data _⊢_∶_ : type-context → term → type → Set where
 
-  weakening : {Γ : type-context} {x : variable} {M : term} {s : type} {t : type} →
+    -- Figure 1: Typing rules relative to a signature
+
+    identity : {Γ : type-context} {x : variable} {t : type} →
+               --TODO: Add C(type)
+               -----------------------
+               (Γ , x ∶ t) ⊢ var x ∶ t
+
+    weakening : {Γ : type-context} {x : variable} {M : term} {s : type} {t : type} →
+
+                (Γ ⊢ M ∶ t) →
+                -------------------
+                (Γ , x ∶ s) ⊢ M ∶ t
+
+    app : {Γ : type-context} {M N : term} {t s : type} →
+
+          (Γ ⊢ M ∶ (t ⇒ s)) →
+          (Γ ⊢ N ∶ t) →
+          ---------------
+          (Γ ⊢ M ∘ N ∶ s)
+
+    abs : {Γ : type-context} {x : variable} {M : term} {t s : type} →
+
+          ((Γ , x ∶ t) ⊢ M ∶ s) →
+          -------------------------
+          (Γ ⊢ Λ x ∙ M ∶ (t ⇒ s))
+
+    proj-1 : {Γ : type-context} {M : term} {t s : type} →
+
+             (Γ ⊢ M ∶ (t * s)) →
+             -----------------
+             (Γ ⊢ π₁ M ∶ t)
+
+    proj-2 : {Γ : type-context} {M : term} {t s : type} →
+
+             (Γ ⊢ M ∶ (t * s)) →
+             -----------------
+             (Γ ⊢ π₂ M ∶ s)
+
+    pairing : {Γ : type-context} {M N : term} {t s : type} →
 
               (Γ ⊢ M ∶ t) →
-              -------------------
-              (Γ , x ∶ s) ⊢ M ∶ t
+              (Γ ⊢ N ∶ s) →
+              ------------------------
+              (Γ ⊢ M * N ∶ (t * s)) 
 
-  app : {Γ : type-context} {M N : term} {t s : type} →
+    -- TODO: function symbol
 
-        (Γ ⊢ M ∶ (t ⇒ s)) →
-        (Γ ⊢ N ∶ t) →
-        ---------------
-        (Γ ⊢ M ∘ N ∶ s)
+    exchange : {Γ Δ : type-context} {x y : variable} {t t' s : type} {M : term} →
+              -- TODO: Pattern
+               ((Γ ++ [(x , t)] ++ [(y , t')] ++ Δ) ⊢ M ∶ s) →
+               ---------------------------------------------------------------------------
+               ((Γ ++ [(x , t')] ++ [(y , t)] ++ Δ) ⊢ (subst M ((y , var x) ∷ [(x , var y)])) ∶ s)
 
-  abs : {Γ : type-context} {x : variable} {M : term} {t s : type} →
+    contraction : {Γ : type-context} {x y : variable} {t s : type} {M : term} →
 
-        ((Γ , x ∶ t) ⊢ M ∶ s) →
-        -------------------------
-        (Γ ⊢ Λ x ∙ M ∶ (t ⇒ s))
+                  (((Γ , x ∶ t) , y ∶ t) ⊢ M ∶ s) →
+                  -------------------------------------
+                  ((Γ , x ∶ t) ⊢ subst M [(x , var y)] ∶ s)
 
-  proj-1 : {Γ : type-context} {M : term} {t s : type} →
+    unit : {Γ : type-context} →
+           --------------
+           (Γ ⊢ <> ∶ one)
 
-           (Γ ⊢ M ∶ (t * s)) →
-           -----------------
-           (Γ ⊢ π₁ M ∶ t)
+    -- Figure 2: Typing rules for logical connectives.
 
-  proj-2 : {Γ : type-context} {M : term} {t s : type} →
+    false : {Γ : type-context} →
+            --------------
+            (Γ ⊢ ⊥ ∶ prop)
 
-           (Γ ⊢ M ∶ (t * s)) →
-           -----------------
-           (Γ ⊢ π₂ M ∶ s)
+    true : {Γ : type-context} →
+           --------------
+           (Γ ⊢ ⊤ ∶ prop)
 
-  pairing : {Γ : type-context} {M N : term} {t s : type} →
+    conj : {Γ : type-context} {A B : term} →
 
-            (Γ ⊢ M ∶ t) →
-            (Γ ⊢ N ∶ s) →
-            ------------------------
-            (Γ ⊢ M * N ∶ (t * s)) 
+           (Γ ⊢ A ∶ prop) →
+           (Γ ⊢ B ∶ prop) →
+           ------------------
+           (Γ ⊢ A ∧ B ∶ prop)
 
-  -- TODO: function symbol
+    disj : {Γ : type-context} {A B : term} →
 
-  exchange : {Γ Δ : type-context} {x y : variable} {t t' s : type} {M : term} →
-            -- TODO: Pattern
-             ((Γ ++ [(x , t)] ++ [(y , t')] ++ Δ) ⊢ M ∶ s) →
-             ---------------------------------------------------------------------------
-             ((Γ ++ [(x , t')] ++ [(y , t)] ++ Δ) ⊢ (subst M ((y , x) ∷ [(x , y)])) ∶ s)
+           (Γ ⊢ A ∶ prop) →
+           (Γ ⊢ B ∶ prop) →
+           ------------------
+           (Γ ⊢ A ∨ B ∶ prop)
 
-  contraction : {Γ : type-context} {x y : variable} {t s : type} {M : term} →
+    impl : {Γ : type-context} {A B : term} →
 
-                (((Γ , x ∶ t) , y ∶ t) ⊢ M ∶ s) →
-                -------------------------------------
-                ((Γ , x ∶ t) ⊢ subst M [(x , y)] ∶ s)
+           (Γ ⊢ A ∶ prop) →
+           (Γ ⊢ B ∶ prop) →
+           ------------------
+           (Γ ⊢ A ⇒ B ∶ prop)
 
-  unit : {Γ : type-context} →
-         --------------
-         (Γ ⊢ <> ∶ one)
-  
-  false : {Γ : type-context} →
-          --------------
-          (Γ ⊢ ⊥ ∶ prop)
+    for_all : {Γ : type-context} {x : variable} {t : type} {A : term} →
 
-  true : {Γ : type-context} →
-         --------------
-         (Γ ⊢ ⊤ ∶ prop)
-         
-  conj : {Γ : type-context} {A B : term} →
+              ((Γ , x ∶ t) ⊢ A ∶ prop) →
+              --------------------------
+              (Γ ⊢ for_all x t A ∶ prop)
 
-         (Γ ⊢ A ∶ prop) →
-         (Γ ⊢ B ∶ prop) →
-         ------------------
-         (Γ ⊢ A ∧ B ∶ prop)
-
-  disj : {Γ : type-context} {A B : term} →
-
-         (Γ ⊢ A ∶ prop) →
-         (Γ ⊢ B ∶ prop) →
-         ------------------
-         (Γ ⊢ A ∨ B ∶ prop)
-
-  impl : {Γ : type-context} {A B : term} →
-
-         (Γ ⊢ A ∶ prop) →
-         (Γ ⊢ B ∶ prop) →
-         ------------------
-         (Γ ⊢ A ⇒ B ∶ prop)
-
-  for_all : {Γ : type-context} {x : variable} {t : type} {A : term} →
+    exist : {Γ : type-context} {x : variable} {t : type} {A : term} →
 
             ((Γ , x ∶ t) ⊢ A ∶ prop) →
             --------------------------
-            (Γ ⊢ for_all x t A ∶ prop)
+            (Γ ⊢ exist x t A ∶ prop)
 
-  exist : {Γ : type-context} {x : variable} {t : type} {A : term} →
+  term-context = List term
 
-          ((Γ , x ∶ t) ⊢ A ∶ prop) →
-          --------------------------
-          (Γ ⊢ exist x t A ∶ prop)
+  postulate
+    substTermContext : term-context → List (variable × term) → term-context
+
+  data _∣_⊢_ : type-context → term-context → term → Set where
+
+    -- Figure 3: Natural deduction rules for higher-order logic.
+
+    identity : {Γ : type-context} {M : term} →
+
+               (Γ ⊢ M ∶ prop) →
+               ----------------
+               (Γ ∣ [ M ] ⊢ M)
+
+    cut : {Γ : type-context} {M N : term} {Δ₁ Δ₂ : term-context} →
+
+          (Γ ∣ Δ₁ ⊢ M) →
+          (Γ ∣ M ∷ Δ₂ ⊢ N) →
+          ------------------
+          (Γ ∣ Δ₁ ++ Δ₂ ⊢ N)
+
+    weak-prop : {Γ : type-context} {M N : term} {Δ : term-context} →
+
+                (Γ ∣ Δ ⊢ M) →
+                (Γ ⊢ N ∶ prop) →
+                ----------------
+                (Γ ∣ N ∷ Δ ⊢ M)
+
+    contr-prop : {Γ : type-context} {M N : term} {Δ : term-context} →
+
+                 (Γ ∣ N ∷ N ∷ Δ ⊢ M) →
+                 ---------------------
+                 (Γ ∣ N ∷ Δ ⊢ M)
+
+    exch-prop : {Γ : type-context} {M N L : term} {Δ₁ Δ₂ : term-context} →
+
+                (Γ ∣ Δ₁ ++ [ M ] ++ [ N ] ++ Δ₂ ⊢ L) →
+                --------------------------------------
+                (Γ ∣ Δ₁ ++ [ N ] ++ [ M ] ++ Δ₂ ⊢ L)
+
+    weak-type : {Γ : type-context} {x : variable} {t : type} {M : term} {Δ : term-context} →
+
+                (Γ ∣ Δ ⊢ M) →
+                ---------------------
+                ((Γ , x ∶ t) ∣ Δ ⊢ M)
+
+    contr-type : {Γ : type-context} {x y : variable} {t : type} {Ω : term-context} {M : term} →
+
+                 ((Γ ++ [ x , t ] ++ [ y , t ]) ∣ Ω ⊢ M) →
+                 ----------------------------------------------------------------------
+                 ((Γ , x ∶ t) ∣ substTermContext Ω [ x , var y ] ⊢ subst M [ x , var y ])
+
+    exch-type : {Γ Δ : type-context} {Ω : term-context} {M : term} {x y : variable} {t s : type} →
+
+                ( (Γ ++ [ x , t ] ++ [ y , s ] ++ Δ) ∣ Ω ⊢ M ) →
+                ----------------------------------------------
+                ( (Γ ++ [ y , s ] ++ [ x , t ] ++ Δ) ∣ Ω ⊢ M )
+
+    substitution : {Δ₁ Δ₂ Γ : type-context} {Ω : term-context} {M N : term} {t : type} {x : variable} →
+
+                   (Γ ⊢ M ∶ t) →
+                   ((Δ₁ ++ [ x , t ] ++ Δ₂) ∣ Ω ⊢ N) →
+                   --------------------------------------------------------------------
+                   ((Δ₁ ++ Γ ++ Δ₂) ∣ substTermContext Ω [ x , M ] ⊢ subst N [ x , M ])
+
+  --  true
+  --  false
+  --  and-I
+  --  and-E1
+  --  and-E2
+  --  or-I1
+  --  or-I2
+  --  or-E
+  --  imp-I
+  --  imp-E
+  --  forall-E
+  --  forall-I
+  --  exist-E
+  --  exist-I
