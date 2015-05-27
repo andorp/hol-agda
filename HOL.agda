@@ -11,54 +11,64 @@ open import Data.Nat hiding (_*_)
 open import Data.String hiding (_++_)
 open import Data.Product
 open import Data.Vec hiding (_++_; [_])
-
-data type : Set where
-  one : type
-  prop : type
-  nat : type
-  _*_ : type → type → type
-  _⇒_ : type → type → type
-
-data variable : Set where
-  var_name : String → variable
+open import Relation.Binary.PropositionalEquality using (_≡_)
 
 data function : ℕ → Set where
   fun_name : {n : ℕ} → String → function n
 
-data term : Set where
-  var : variable → term
-  fun : {n : ℕ} → function n → Vec term n → term
-  _∘_ : term → term → term -- Application
-  Λ_∙_ : variable → term → term -- lambda
-  π₁ : term → term
-  π₂ : term → term
-  _*_ : term → term → term
-  <> : term
-  ⊥ : term
-  ⊤ : term
-  _∧_ : term → term → term
-  _∨_ : term → term → term
-  _⇒_ : term → term → term
-  for_all : variable → type → term → term
-  exist : variable → type → term → term
+data variable : Set where
+  var_name : String → variable
 
-postulate
-  subst      : term → List (variable × term) → term
+module Syntax {type₁ : Set} (types : List type₁) (funs : ∀ {n} → function n → Vec type₁ n) where
 
-type-context = List (variable × type)
+  data type : Set where
+    one : type
+    prop : type
+    typ : type₁ → type
+    _*_ : type → type → type
+    _⇒_ : type → type → type
 
-pattern _,_∶_ Γ x t = (x , t) ∷ Γ
+  data term : Set where
+    var : variable → term
+    fun : {n : ℕ} → function n → Vec term n → term
+    _∘_ : term → term → term -- Application
+    Λ_∙_ : variable → term → term -- lambda
+    π₁ : term → term
+    π₂ : term → term
+    _*_ : term → term → term
+    <> : term
+    ⊥ : term
+    ⊤ : term
+    _∧_ : term → term → term
+    _∨_ : term → term → term
+    _⇒_ : term → term → term
+    for_all : variable → type → term → term
+    exist : variable → type → term → term
 
-module Rules (T : List type) (F : ∀ {n} → function n → List type) where
+  postulate
+    subst      : term → List (variable × term) → term
+
+  type-context = List (variable × type)
+
+  pattern _,_∶_ Γ x t = (x , t) ∷ Γ
+
+  data Any {A : Set} (P : A → Set) : List A → Set where
+    zero : ∀ {x xs} (p : P x) → Any P (x ∷ xs)
+    suc  : ∀ {x xs} (a : Any P xs) → Any P (x ∷ xs)
+
+  _⋿_ : ∀ {A : Set} → A → List A → Set
+  x ⋿ xs = Any (_≡_ x) xs
 
   data _⊢_∶_ : type-context → term → type → Set where
 
-    -- Figure 1: Typing rules relative to a signature
+    -- Figure 1: Typing rules relative to a signature (T, F). Γ is a type context, i.e., a list
+    -- x1 : σ1, x2 : σ2, . . . , xn : σn and when we write Γ, x : σ we assume that x does not occur in Γ .
 
-    identity : {Γ : type-context} {x : variable} {t : type} →
-               --TODO: Add C(type)
+    identity : {Γ : type-context} {x : variable} {t : type₁} →
+
+               (t ⋿ types) →
                -----------------------
-               (Γ , x ∶ t) ⊢ var x ∶ t
+               (Γ , x ∶ typ t) ⊢ var x ∶ typ t
 
     weakening : {Γ : type-context} {x : variable} {M : term} {s : type} {t : type} →
 
@@ -116,7 +126,9 @@ module Rules (T : List type) (F : ∀ {n} → function n → List type) where
            --------------
            (Γ ⊢ <> ∶ one)
 
-    -- Figure 2: Typing rules for logical connectives.
+    -- Figure 2: Typing rules for logical connectives. Note that these are not introduction and elimination
+    -- rules for connectives. These merely state that some things are propositions, i.e., of type
+    -- Prop
 
     false : {Γ : type-context} →
             --------------
@@ -166,7 +178,9 @@ module Rules (T : List type) (F : ∀ {n} → function n → List type) where
 
   data _∣_⊢_ : type-context → term-context → term → Set where
 
-    -- Figure 3: Natural deduction rules for higher-order logic.
+    -- Figure 3: Natural deduction rules for higher-order logic. Note that by convention x does not
+    -- appear free in Θ, Ξ or ψ in the rules ∀-I and ∃-E since we implicitly have that x is not in Γ and
+    -- Θ, Ξ and ψ are well formed in context Γ .
 
     identity : {Γ : type-context} {M : term} →
 
