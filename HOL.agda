@@ -297,5 +297,16 @@ module Rules (T : List type) (F : ∀ {n} → function n → List type) where
                ---------------------------
                (Γ ∣ Ω ⊢ subst N [ x , M ])
 
-  --  exist-E
-  --  exist-I
+    exist-I : {Γ : type-context} {Ω : term-context} {x : variable} {t : type} {M N : term} →
+
+              (Γ ⊢ M ∶ t) →
+              (Γ ∣ Ω ⊢ subst N [ x , M ]) →
+              ---------------------
+              (Γ ∣ Ω ⊢ exist x t N)
+
+    exist-E : {Γ : type-context} {Ω₁ Ω₂ : term-context} {x : variable} {t : type} {M N : term} →
+
+              (Γ ∣ Ω₁ ⊢ exist x t N) →
+              ((Γ , x ∶ t) ∣ N ∷ Ω₂ ⊢ M) →
+              ----------------------------
+              (Γ ∣ Ω₁ ++ Ω₂ ⊢ M)
