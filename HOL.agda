@@ -225,17 +225,77 @@ module Rules (T : List type) (F : ∀ {n} → function n → List type) where
                    --------------------------------------------------------------------
                    ((Δ₁ ++ Γ ++ Δ₂) ∣ substTermContext Ω [ x , M ] ⊢ subst N [ x , M ])
 
-  --  true
-  --  false
-  --  and-I
-  --  and-E1
-  --  and-E2
-  --  or-I1
-  --  or-I2
-  --  or-E
-  --  imp-I
-  --  imp-E
-  --  forall-E
-  --  forall-I
+    true : {Γ : type-context} {Ω : term-context} →
+           ---------
+           Γ ∣ Ω ⊢ ⊤
+
+    false : {Γ : type-context} {Ω : term-context} →
+            ---------
+            Γ ∣ Ω ⊢ ⊥
+
+    and-I : {Γ : type-context} {Ω : term-context} {M N : term} →
+
+            (Γ ∣ Ω ⊢ N) →
+            (Γ ∣ Ω ⊢ M) →
+            -----------------
+            (Γ ∣ Ω ⊢ (M ∧ N))
+
+    and-E1 : {Γ : type-context} {Ω : term-context} {M N : term} →
+
+             (Γ ∣ Ω ⊢ (M ∧ N)) →
+             -----------------
+             (Γ ∣ Ω ⊢ M)
+
+    and-E2 : {Γ : type-context} {Ω : term-context} {M N : term} →
+
+             (Γ ∣ Ω ⊢ (M ∧ N)) →
+             -----------------
+             (Γ ∣ Ω ⊢ N)
+
+    or-I1 : {Γ : type-context} {Ω : term-context} {M N : term} →
+
+            (Γ ∣ Ω ⊢ M) →
+            -----------------
+            (Γ ∣ Ω ⊢ (N ∨ M))
+
+    or-I2 : {Γ : type-context} {Ω : term-context} {M N : term} →
+
+            (Γ ∣ Ω ⊢ M) →
+            -----------------
+            (Γ ∣ Ω ⊢ (M ∨ N))
+
+    or-E : {Γ : type-context} {Ω : term-context} {L M N : term} →
+
+           (Γ ∣ M ∷ Ω ⊢ L) →
+           (Γ ∣ N ∷ Ω ⊢ L) →
+           ---------------------
+           (Γ ∣ (M ∨ N) ∷ Ω ⊢ L)
+
+    imp-I : {Γ : type-context} {Ω : term-context} {M N : term} →
+
+            (Γ ∣ M ∷ Ω ⊢ N) →
+            -----------------
+            (Γ ∣ Ω ⊢ (M ⇒ N))
+
+    imp-E : {Γ : type-context} {Ω : term-context} {M N : term} →
+
+            (Γ ∣ Ω ⊢ (M ⇒ N)) →
+            (Γ ∣ Ω ⊢ M) →
+            -----------------
+            (Γ ∣ Ω ⊢ N)
+
+    forall-I : {Γ : type-context} {Ω : term-context} {x : variable} {t : type} {N : term} →
+
+               ((Γ , x ∶ t) ∣ Ω ⊢ N) →
+               -----------------------
+               (Γ ∣ Ω ⊢ for_all x t N)
+
+    forall-E : {Γ : type-context} {Ω : term-context} {x : variable} {t : type} {M N : term} →
+
+               (Γ ⊢ M ∶ t) →
+               (Γ ∣ Ω ⊢ for_all x t N) →
+               ---------------------------
+               (Γ ∣ Ω ⊢ subst N [ x , M ])
+
   --  exist-E
   --  exist-I
